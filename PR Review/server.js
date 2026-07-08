@@ -55,7 +55,8 @@ async function getPrDiff(repoFullName, prNumber) {
 // ── Send the diff to GPT-4o ──────────────────────────────
 async function reviewWithOpenAI(diff, prTitle) {
   const response = await openai.chat.completions.create({
-    model: "llama3-70b-8192",
+    // Use a supported model. `llama3-70b-8192` was decommissioned.
+    model: "gpt-4o",
     messages: [
       {
         role: "system",
