@@ -2,19 +2,25 @@ require("dotenv").config();
 const express = require("express");
 const axios = require("axios");
 const crypto = require("crypto");
-const OpenAI = require("openai");
+// Bring in the official Groq SDK
+const Groq = require("groq-sdk");
 
 const app = express();
-// const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  baseURL: "https://api.groq.com/openai/v1",
-});
-
+// Validate required environment variables
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 const PORT = process.env.PORT || 5000;
+
+if (!GITHUB_TOKEN || !WEBHOOK_SECRET) {
+  console.error(
+    "❌ Missing required environment variables: GITHUB_TOKEN and WEBHOOK_SECRET",
+  );
+  process.exit(1);
+}
+
+// Initialize Groq (it automatically looks for process.env.GROQ_API_KEY)
+const groq = new Groq();
 
 // Keep raw body for GitHub signature verification
 app.use(
@@ -52,11 +58,10 @@ async function getPrDiff(repoFullName, prNumber) {
   return response.data;
 }
 
-// ── Send the diff to GPT-4o ──────────────────────────────
-async function reviewWithOpenAI(diff, prTitle) {
-  const response = await openai.chat.completions.create({
-    // Use a supported model. `llama3-70b-8192` was decommissioned.
-    model: "gpt-4o",
+// Send the diff to Groq (Llama 3.3) for code review
+async function reviewWithGroq(diff, prTitle) {
+  const response = await groq.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
     messages: [
       {
         role: "system",
@@ -90,6 +95,7 @@ Diff:
 ${diff.slice(0, 7000)}`,
       },
     ],
+    temperature: 0.2, // Low temperature for analytical code reviews
   });
   return response.choices[0].message.content;
 }
@@ -98,7 +104,7 @@ ${diff.slice(0, 7000)}`,
 async function postPrComment(repoFullName, prNumber, review) {
   const response = await axios.post(
     `https://api.github.com/repos/${repoFullName}/issues/${prNumber}/comments`,
-    { body: `## 🤖 AI Code Review (GPT-4o)\n\n${review}` },
+    { body: `## 🤖 AI Code Review (Groq)\n\n${review}` },
     {
       headers: {
         Authorization: `token ${GITHUB_TOKEN}`,
@@ -143,8 +149,8 @@ app.post("/webhook", async (req, res) => {
       return res.json({ status: "Empty diff, skipped" });
     }
 
-    console.log("   Sending to GPT-4o...");
-    const review = await reviewWithOpenAI(diff, prTitle);
+    console.log("   Sending to Groq...");
+    const review = await reviewWithGroq(diff, prTitle);
 
     console.log("   Posting comment to GitHub...");
     const status = await postPrComment(repo, prNumber, review);
@@ -161,7 +167,6 @@ app.post("/webhook", async (req, res) => {
 app.get("/", (req, res) => {
   res.json({ status: "AI Reviewer is running ✅" });
 });
-// const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`🚀 AI Reviewer running on http://localhost:${PORT}`);
