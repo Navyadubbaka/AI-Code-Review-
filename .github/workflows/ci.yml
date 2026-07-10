@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - testing-branch
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./PR Review
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: PR Review/package-lock.json
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests
+        run: npm test
+
+      - name: Start app briefly
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+          PORT: 5000
+        run: |
+          node server.js > /tmp/ai-reviewer.log 2>&1 &
+          sleep 5
+          if grep -q "AI Reviewer running" /tmp/ai-reviewer.log; then
+            echo "Server started successfully"
+          else
+            echo "Server did not start correctly"
+            cat /tmp/ai-reviewer.log
+            exit 1
+          fi
