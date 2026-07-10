@@ -38,6 +38,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           PORT: 5000
         run: |
           node server.js > /tmp/ai-reviewer.log 2>&1 &
