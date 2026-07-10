@@ -34,7 +34,7 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Start app briefly
+      - name: Start app briefly      git push origin main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}

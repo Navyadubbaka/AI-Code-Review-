@@ -164,7 +164,7 @@ app.post("/webhook", async (req, res) => {
   }
 });
 
-// ── Health check ─────────────────────────────────────────
+
 app.get("/", (req, res) => {
   res.json({ status: "AI Reviewer is running ✅" });
 });
